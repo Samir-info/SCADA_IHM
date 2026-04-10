@@ -1,22 +1,37 @@
 import tkinter as tk
 import serial
 import time
-
-from main2 import requete
+import modbus
+from modbus import requete
 
 PORT = "COM6"
 BAUDRATE = 9600
 
 def EnvoyerRequete():
-    #reponse = "01 03 00 00 00 05 85 00 31 00 02 00 02 6a 3c"
-    ser = serial.Serial(PORT, BAUDRATE, timeout=1)
-    ser.write(requete)
-    time.sleep(0.1)
-    reponse = ser.read(15)
-    print("Réponse HEX :", reponse.hex())
-    ser.close()
-    entry_reponse.delete(0, tk.END)
-    entry_reponse.insert(0, reponse.hex())
+
+    success, reponse = modbus.envoyer_trame(PORT, BAUDRATE, requete)
+
+    if success:
+
+        print("Réponse HEX :", reponse.hex())
+
+        entry_reponse.delete(0, tk.END)
+        entry_reponse.insert(0, reponse.hex())
+
+        alarm_code = reponse[9]
+
+        if alarm_code == 0:
+            label_ras.config(text="RAS", bg="green")
+        elif alarm_code == 1:
+            label_ras.config(text="Alerte", bg="orange")
+        elif alarm_code == 2:
+            label_ras.config(text="Critique", bg="red")
+        else:
+            label_ras.config(text="Inconnu", bg="gray")
+
+    else:
+        label_ras.config(text="Erreur", bg="black")
+        print("Erreur :", reponse)
 
 fenetre = tk.Tk()
 fenetre.title("IHM SCADA - BTS CIEL")
@@ -35,7 +50,6 @@ label_vitesse = tk.Label(frame_config, text="Vitesse de transmission")
 label_vitesse.pack(side="left", padx=5)
 
 entry_vitesse = tk.Entry(frame_config, width=8)
-# noinspection PyTypeChecker
 entry_vitesse.insert(0, BAUDRATE)
 entry_vitesse.pack(side="left", padx=5)
 

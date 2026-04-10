@@ -1,50 +1,37 @@
 import serial
 import time
 
-PORT ="COM6"
-BAUDRATE = 9600
+requete = bytes([0x01, 0x03, 0x00, 0x00, 0x00, 0x05, 0x85, 0xC9])
 
-requete = bytes([0x01,0x03,0x00,0x00,0x00,0x05,0x85,0xC9])
+def envoyer_trame(port, baudrate, requete):
+    try:
+        ser = serial.Serial(port, baudrate, timeout=1)
 
-ser = serial.Serial(PORT, BAUDRATE, timeout=1)
+        ser.write(requete)
+        time.sleep(0.1)
 
-ser.write(requete)
+        reponse = ser.read(15)
 
-time.sleep(0.1)
+        ser.close()
 
-reponse = ser.read(15)
+        return True, reponse
 
-print("Réponse HEX :", reponse.hex())
+    except Exception as e:
+        return False, e
 
-ser.close()
-print("Adresse esclave :", reponse[0])
-print("Code fonction :", reponse[1])
-print("Nombre d'octets de données :", reponse[2])
-print("----- ETAT SYTEME -----")
-octet_fort = reponse[3]
-octet_faible = reponse[4]
-temperature_brute = (octet_fort << 8) | octet_faible
-temperature_c = temperature_brute / 10
-print("Température :", temperature_c, "°C")
+def extraction_alarme(reponse):
+    code = reponse[9]
 
-octet_fort = reponse[5]
-octet_faible = reponse[6]
-pression_brute = (octet_fort << 8) | octet_faible
-print("Pression :", pression_brute, "hPa")
+    if code == 0:
+        alarme = "NORMAL"
+    elif code == 1:
+        alarme = "ALARME"
+    elif code == 2:
+        alarme = "CRITIQUE"
+    else:
+        alarme = "INCONNU"
 
-octet_fort = reponse[7]
-octet_faible = reponse[8]
-humidite_brute = (octet_fort << 8) | octet_faible
-print("Humidité :", humidite_brute, "%")
+    return alarme
 
-alarm_code = reponse[9]
-if alarm_code == 0:
-    etat_alarme = "NORMAL"
-elif alarm_code == 1:
-    etat_alarme = "ALARME"
-elif alarm_code == 2:
-    etat_alarme = "CRITIQUE"
-else:
-    etat_alarme = "INCONNU"
-print("État de l'alarme :", etat_alarme)
-print("-----------------------")
+def extraction_critique(reponse):
+    code = reponse[9]
